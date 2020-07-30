@@ -3,14 +3,6 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
-#Added myself
-ItSchoolParserImap/bin/Debug/netcoreapp3.1/IT-school-b735e6ee4139.json
-ItSchoolParserImap/bin/Debug/netcoreapp3.1/TestProject-dc04299eeebc.json
-ItSchoolParserImap/bin/Debug/netcoreapp3.1/*.xml
-ItSchoolParserImap/bin/Release/netcoreapp3.1/IT-school-b735e6ee4139.json
-ItSchoolParserImap/bin/Release/netcoreapp3.1/TestProject-dc04299eeebc.json
-ItSchoolParserImap/bin/Release/netcoreapp3.1/*.xml
-ItSchoolParserImap/bin/Release
 
 # User-specific files
 *.rsuser
