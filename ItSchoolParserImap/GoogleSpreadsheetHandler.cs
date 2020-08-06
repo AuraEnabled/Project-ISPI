@@ -20,9 +20,9 @@ namespace ItSchoolParserImap
         public string CredentialFile { get; }
         public SheetsService Service { get; set; }
 
-        public List<string> BufferList { get; set; }
+        public List<Message__c> BufferList { get; set; }
         public List<object> ObjectList { get; set; }
-        public List<string> BatchList { get; set; }
+        public List<object> BatchList { get; set; }
 
 
         public GoogleSpreadsheetHandler(List<Message> messageList, GoogleAuth googleAuth)
@@ -66,28 +66,14 @@ namespace ItSchoolParserImap
 
         private void CreateEntry()
         {
-            var range = $"{Sheet}!A:J"; //var range = $"{Sheet}!A:I";
+            var range = $"{Sheet}!A:M";
             Regex regex = new Regex(@"((<\w{1,2}\/>|<\w{1,2}>|<\/\w>)|\\\w)");
-            BufferList = new List<string>();
+            BufferList = new List<Message__c>();
 
-            /// <summary>
-            /// Коллекция типа Message приводится к типу string. По причине инвариантности
-            /// обобщений (они не принимают участия в иерархии наследования типов) наиболее
-            /// простой способ привести типы - переписать каждую переменную отдельно.
-            /// </summary>
-            foreach (var msg_i in MessageList)
+            foreach (Message msg_i in MessageList)
             {
-                BufferList.Add(msg_i.Body.Html);
+                BufferList.Add(new Message__c(msg_i.Date, regex.Replace(msg_i.Body.Html, "")));
             }
-
-            /// <summary>
-            /// Из сообщения убираются лишние тэги, знаки табуляции, переносы строки и пр.
-            /// </summary>
-            for (int i = 0; i < BufferList.Count; i++)
-            {
-                BufferList[i] = regex.Replace(BufferList[i], "");
-            }
-
 
 
             /// <summary>
@@ -97,14 +83,12 @@ namespace ItSchoolParserImap
             {
                 DateTime currentDate = DateTime.Now;
                 var valueRange = new ValueRange();
-                ObjectList = new List<object>() { currentDate.ToShortDateString(), currentDate.ToShortTimeString() };
-                valueRange.Values = new List<IList<object>> { ObjectList };
+                BatchList = new List<object>() { currentDate.ToShortDateString(), currentDate.ToShortTimeString() };
+                valueRange.Values = new List<IList<object>> { BatchList };
                 var appendRequest = Service.Spreadsheets.Values.Append(valueRange, SpreadsheetId, range);
                 appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.RAW;
                 var appendResponse = appendRequest.Execute();
-                ObjectList.Clear();
-
-
+                BatchList.Clear();
             }
 
             foreach (var msg_i in BufferList)
@@ -112,30 +96,25 @@ namespace ItSchoolParserImap
                 try
                 {
                     var valueRange = new ValueRange();
-                    ObjectList = new List<object>();
-                    BatchList = new List<string>()
+                    BatchList = new List<object>()
                     {
-                        msg_i.Substring(msg_i.IndexOf("Имя: ") + 5, msg_i.IndexOf("Возраст (для детей)") - msg_i.IndexOf("Имя: ") - 5 ),
-                        msg_i.Substring(msg_i.IndexOf("Возраст (для детей): ") + 21, msg_i.IndexOf("Телефон: ") - msg_i.IndexOf("Возраст (для детей): ") - 21/**/),
-                        msg_i.Substring(msg_i.IndexOf("Телефон: ") + 9, msg_i.IndexOf("Viber: ") - msg_i.IndexOf("Телефон: ") - 9),
-                        msg_i.Substring(msg_i.IndexOf("Viber: ") + 7, msg_i.IndexOf("Telegram: ") - msg_i.IndexOf("Viber: ") - 7),
-                        msg_i.Substring(msg_i.IndexOf("Telegram: ") + 10, msg_i.IndexOf("E-mail: ") - msg_i.IndexOf("Telegram: ") - 10),
-                        msg_i.Substring(msg_i.IndexOf("E-mail: ") + 8, msg_i.IndexOf("Откуда вы узнали о нас: ") - msg_i.IndexOf("E-mail: ") - 8),
-                        msg_i.Substring(msg_i.IndexOf("Откуда вы узнали о нас: ") + 24, msg_i.IndexOf("Локация: ") - msg_i.IndexOf("Откуда вы узнали о нас: ") - 24),
-                        msg_i.Substring(msg_i.IndexOf("Локация: ") + 9, msg_i.IndexOf("Дополнительные комментарии / вопросы:") - msg_i.IndexOf("Локация: ") - 9),
-                        msg_i.Substring(msg_i.IndexOf("Дополнительные комментарии / вопросы:") + 38, msg_i.IndexOf("Выбранные курсы:") - msg_i.IndexOf("Дополнительные комментарии / вопросы:") - 38),
-                        msg_i.Substring(msg_i.IndexOf("Выбранные курсы:") + 16, msg_i.Length - msg_i.IndexOf("Выбранные курсы:") - 16)
+                        $"{msg_i.DateSent.Value.Day}/{msg_i.DateSent.Value.Month}/{msg_i.DateSent.Value.Year}",
+                        msg_i.MessageAsText.Substring(msg_i.MessageAsText.IndexOf("Выбранные курсы:") + 16, msg_i.MessageAsText.Length - msg_i.MessageAsText.IndexOf("Выбранные курсы:") - 16),
+                        msg_i.MessageAsText.Substring(msg_i.MessageAsText.IndexOf("Имя: ") + 5, msg_i.MessageAsText.IndexOf("Возраст (для детей)") - msg_i.MessageAsText.IndexOf("Имя: ") - 5 ),
+                        msg_i.MessageAsText.Substring(msg_i.MessageAsText.IndexOf("Телефон: ") + 9, msg_i.MessageAsText.IndexOf("Viber: ") - msg_i.MessageAsText.IndexOf("Телефон: ") - 9),
+                        msg_i.MessageAsText.Substring(msg_i.MessageAsText.IndexOf("Viber: ") + 7, msg_i.MessageAsText.IndexOf("Telegram: ") - msg_i.MessageAsText.IndexOf("Viber: ") - 7),
+                        msg_i.MessageAsText.Substring(msg_i.MessageAsText.IndexOf("Telegram: ") + 10, msg_i.MessageAsText.IndexOf("E-mail: ") - msg_i.MessageAsText.IndexOf("Telegram: ") - 10),
+                        msg_i.MessageAsText.Substring(msg_i.MessageAsText.IndexOf("E-mail: ") + 8, msg_i.MessageAsText.IndexOf("Откуда вы узнали о нас: ") - msg_i.MessageAsText.IndexOf("E-mail: ") - 8),
+                        msg_i.MessageAsText.Substring(msg_i.MessageAsText.IndexOf("Откуда вы узнали о нас: ") + 24, msg_i.MessageAsText.IndexOf("Локация: ") - msg_i.MessageAsText.IndexOf("Откуда вы узнали о нас: ") - 24),
+                        msg_i.MessageAsText.Substring(msg_i.MessageAsText.IndexOf("Локация: ") + 9, msg_i.MessageAsText.IndexOf("Дополнительные комментарии / вопросы:") - msg_i.MessageAsText.IndexOf("Локация: ") - 9),
+                        "Not specified yet",
+                        msg_i.MessageAsText.Substring(msg_i.MessageAsText.IndexOf("Возраст (для детей): ") + 21, msg_i.MessageAsText.IndexOf("Телефон: ") - msg_i.MessageAsText.IndexOf("Возраст (для детей): ") - 21)
                     };
-
-                    foreach (var msg_j in BatchList)
-                    {
-                        ObjectList.Add(msg_j);
-                    }
 
                     /// <summary>
                     /// Эта коллекция будет записываться в строку
                     /// </summary>
-                    valueRange.Values = new List<IList<object>> { ObjectList };
+                    valueRange.Values = new List<IList<object>> { BatchList };
                     var appendRequest = Service.Spreadsheets.Values.Append(valueRange, SpreadsheetId, range);
                     appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.RAW;
                     var appendResponse = appendRequest.Execute();
